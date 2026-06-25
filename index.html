@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Business Decision Simulator | Built for Digital Heroes</title>
+  <meta name="description" content="Run your business decision through 5 AI agents — a skeptic, investor, competitor, analyst, and early adopter. Get a consensus verdict and action plan instantly." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #07050E;
+      --bg2:       #0D0A1A;
+      --card:      #120F1F;
+      --card2:     #1A1630;
+      --border:    #2A2244;
+      --border2:   #3D3260;
+      --text:      #EAE5FF;
+      --text2:     #9488C0;
+      --text3:     #5A5080;
+      --purple:    #A855F7;
+      --purple-d:  #7C3AED;
+      --purple-bg: rgba(168,85,247,0.08);
+      --pink:      #EC4899;
+      /* Agent colors */
+      --c-red:     #F87171;
+      --c-green:   #34D399;
+      --c-amber:   #FBBF24;
+      --c-blue:    #60A5FA;
+      --c-violet:  #A78BFA;
+      /* Verdict */
+      --v-go:      #34D399;
+      --v-caution: #FBBF24;
+      --v-rethink: #F87171;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      position: relative;
+    }
+
+    /* Cosmic grid background */
+    body::before {
+      content: "";
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(168,85,247,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(168,85,247,0.035) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+    }
+    body::after {
+      content: "";
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse at 15% 25%, rgba(168,85,247,0.12) 0%, transparent 45%),
+        radial-gradient(ellipse at 85% 75%, rgba(236,72,153,0.07) 0%, transparent 40%);
+      pointer-events: none;
+    }
+
+    /* Everything above background */
+    header, #formScreen, #loadingScreen, #resultScreen { position: relative; z-index: 1; }
+
+    /* ── HEADER ─────────────────────────────────────── */
+    .header {
+      background: rgba(13,10,26,0.90);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-left h1 { font-size: 15px; font-weight: 800; color: var(--text); }
+    .header-left p  { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    .btn-dh {
+      display: inline-block; padding: 9px 18px;
+      background: linear-gradient(135deg, #4F46E5, #7C3AED);
+      color: white; font-size: 12px; font-weight: 700;
+      border-radius: 10px; text-decoration: none; border: none;
+      cursor: pointer; white-space: nowrap;
+      box-shadow: 0 4px 20px rgba(124,58,237,0.40);
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn-dh:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    /* ── HERO ─────────────────────────────────────────  */
+    .hero {
+      max-width: 620px; margin: 0 auto;
+      padding: 44px 20px 0; text-align: center;
+    }
+    .hero-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 14px; border-radius: 99px;
+      background: var(--purple-bg); border: 1px solid rgba(168,85,247,0.30);
+      color: var(--purple); font-size: 11px; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 18px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .hero h2 {
+      font-size: 30px; font-weight: 900; line-height: 1.18;
+      background: linear-gradient(135deg, #EAE5FF, #A855F7);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p { font-size: 14px; color: var(--text2); margin-top: 12px; line-height: 1.65; }
+
+    /* Agent preview row */
+    .agent-preview {
+      display: flex; gap: 8px; justify-content: center;
+      flex-wrap: wrap; margin: 24px auto 0; max-width: 420px;
+    }
+    .ap-chip {
+      padding: 5px 12px; border-radius: 99px; font-size: 11px; font-weight: 600;
+      border: 1px solid; display: flex; align-items: center; gap: 5px;
+    }
+
+    /* ── FORM ─────────────────────────────────────────  */
+    .main { max-width: 580px; margin: 32px auto 0; padding: 0 16px 60px; }
+
+    .form-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px; padding: 32px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.40);
+    }
+    .form-section-title {
+      font-size: 11px; font-weight: 700; color: var(--purple);
+      letter-spacing: 0.08em; text-transform: uppercase;
+      font-family: 'JetBrains Mono', monospace; margin-bottom: 18px;
+    }
+
+    .field { margin-bottom: 18px; }
+    .field label {
+      display: block; font-size: 12px; font-weight: 600;
+      color: var(--text2); margin-bottom: 7px;
+    }
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%; padding: 12px 14px;
+      background: var(--bg2); border: 1.5px solid var(--border2);
+      border-radius: 12px; font-size: 13px; font-weight: 500;
+      color: var(--text); outline: none; transition: all 0.2s;
+      font-family: 'Inter', sans-serif; appearance: none;
+    }
+    .field input::placeholder,
+    .field textarea::placeholder { color: var(--text3); }
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(168,85,247,0.12);
+    }
+    .field textarea { min-height: 110px; resize: vertical; line-height: 1.6; }
+    .select-wrap { position: relative; }
+    .select-wrap::after {
+      content: "▾"; position: absolute;
+      right: 14px; top: 50%; transform: translateY(-50%);
+      color: var(--text3); pointer-events: none;
+    }
+    .select-wrap select { padding-right: 34px; cursor: pointer; }
+    .select-wrap select option { background: #1A1630; }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
+
+    /* Simulate button */
+    .btn-simulate {
+      width: 100%; padding: 16px;
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      color: white; font-size: 15px; font-weight: 800;
+      border-radius: 14px; border: none; cursor: pointer;
+      box-shadow: 0 4px 24px rgba(168,85,247,0.35);
+      transition: all 0.2s; font-family: 'Inter', sans-serif;
+      letter-spacing: 0.01em; margin-top: 6px;
+    }
+    .btn-simulate:hover  { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 6px 32px rgba(168,85,247,0.45); }
+    .btn-simulate:active { transform: translateY(0); }
+
+    .error-msg {
+      background: rgba(248,113,113,0.10); color: #F87171;
+      border: 1px solid rgba(248,113,113,0.20);
+      border-radius: 10px; padding: 12px 14px;
+      font-size: 12px; margin-top: 12px;
+    }
+
+    /* ── PAGE FOOTER ──────────────────────────────────  */
+    .page-footer {
+      text-align: center; font-size: 11px;
+      color: var(--text3); margin-top: 28px; line-height: 2;
+    }
+    .page-footer .name { font-weight: 600; color: var(--text2); }
+    .page-footer a { color: var(--purple); text-decoration: none; }
+
+    /* ── LOADING ──────────────────────────────────────  */
+    #loadingScreen {
+      display: none; min-height: 100vh;
+      flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; padding: 32px;
+    }
+    .load-orb {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      margin-bottom: 28px;
+      box-shadow: 0 0 60px rgba(168,85,247,0.4);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { transform: scale(1); box-shadow: 0 0 40px rgba(168,85,247,0.3); }
+      50%      { transform: scale(1.08); box-shadow: 0 0 80px rgba(168,85,247,0.6); }
+    }
+    .load-title { font-size: 22px; font-weight: 800; color: var(--text); }
+    .load-sub   { font-size: 13px; color: var(--text2); margin-top: 6px; }
+    .terminal {
+      margin-top: 28px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 14px;
+      padding: 16px 20px; min-width: 320px; max-width: 420px;
+      text-align: left;
+    }
+    .terminal-bar {
+      display: flex; gap: 6px; margin-bottom: 14px;
+    }
+    .terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .terminal-line {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      color: var(--text2); margin-bottom: 6px; line-height: 1.6;
+      min-height: 20px;
+    }
+    .terminal-line.active { color: var(--purple); }
+    .cursor {
+      display: inline-block; width: 8px; height: 14px;
+      background: var(--purple); margin-left: 2px; vertical-align: middle;
+      animation: blink 0.8s step-end infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* ── RESULT ───────────────────────────────────────  */
+    #resultScreen { display: none; min-height: 100vh; }
+
+    .result-header {
+      background: rgba(13,10,26,0.92); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px; display: flex; align-items: center;
+      justify-content: space-between; position: sticky; top: 0; z-index: 100; gap: 12px;
+    }
+    .rtitle { font-size: 14px; font-weight: 700; color: var(--text); }
+    .rsub   { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    .btn-sm {
+      padding: 7px 12px; border: 1px solid var(--border2);
+      border-radius: 8px; background: var(--card); color: var(--text2);
+      font-size: 11px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; font-family: 'Inter', sans-serif;
+    }
+    .btn-sm:hover { background: var(--card2); }
+
+    .result-body { max-width: 720px; margin: 0 auto; padding: 28px 16px 60px; }
+
+    /* Decision summary */
+    .decision-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 20px 24px; margin-bottom: 24px;
+      border-left: 3px solid var(--purple);
+    }
+    .decision-box .db-label {
+      font-size: 10px; font-weight: 700; color: var(--purple);
+      text-transform: uppercase; letter-spacing: 0.1em;
+      font-family: 'JetBrains Mono', monospace; margin-bottom: 6px;
+    }
+    .decision-box .db-text { font-size: 14px; color: var(--text); line-height: 1.6; }
+
+    /* Agents section title */
+    .section-header {
+      font-size: 11px; font-weight: 700; color: var(--text3);
+      text-transform: uppercase; letter-spacing: 0.1em;
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 14px; margin-top: 4px;
+    }
+
+    /* Agent cards */
+    .agents-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
+    .agent-card {
+      border-radius: 16px; border: 1px solid var(--border);
+      overflow: hidden; background: var(--card);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      transition: transform 0.2s;
+    }
+    .agent-card:hover { transform: translateY(-1px); }
+    .agent-top {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 18px; border-bottom: 1px solid var(--border);
+    }
+    .agent-emoji-wrap {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .agent-name { font-size: 14px; font-weight: 800; color: var(--text); }
+    .agent-role { font-size: 11px; color: var(--text3); margin-top: 2px; font-weight: 500; }
+    .agent-body { padding: 0; }
+    .agent-section {
+      padding: 14px 18px; border-bottom: 1px solid var(--border);
+    }
+    .agent-section:last-child { border-bottom: none; }
+    .as-label {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 5px;
+    }
+    .as-text { font-size: 13px; color: var(--text2); line-height: 1.6; }
+    .as-text.concern    { color: #F87171; }
+    .as-text.prediction { color: var(--text); font-style: italic; }
+
+    /* Consensus block */
+    .consensus-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 24px; margin-bottom: 14px;
+    }
+    .cons-title {
+      font-size: 11px; font-weight: 700; color: var(--text3);
+      text-transform: uppercase; letter-spacing: 0.1em;
+      font-family: 'JetBrains Mono', monospace; margin-bottom: 12px;
+    }
+    .cons-text { font-size: 14px; color: var(--text2); line-height: 1.7; }
+
+    /* Verdict */
+    .verdict-row { display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+    .verdict-card {
+      flex: 1; min-width: 140px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 14px; padding: 18px;
+      text-align: center;
+    }
+    .v-label { font-size: 10px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; font-family: 'JetBrains Mono', monospace; margin-bottom: 8px; }
+    .v-badge {
+      display: inline-block; padding: 6px 18px; border-radius: 99px;
+      font-size: 14px; font-weight: 800; border: 1.5px solid;
+    }
+
+    /* Actions */
+    .actions-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 22px; margin-bottom: 20px;
+    }
+    .action-item {
+      display: flex; gap: 12px; align-items: flex-start;
+      margin-bottom: 12px; font-size: 13px; color: var(--text2); line-height: 1.55;
+    }
+    .action-item:last-child { margin-bottom: 0; }
+    .action-num {
+      width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+      background: var(--purple-bg); border: 1px solid rgba(168,85,247,0.30);
+      color: var(--purple); font-size: 11px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 1px;
+    }
+
+    /* Result CTAs */
+    .result-ctas { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+    .btn-primary-lg {
+      display: block; width: 100%; padding: 16px; text-align: center;
+      background: linear-gradient(135deg, #4F46E5, #7C3AED);
+      color: white; font-size: 14px; font-weight: 700; border-radius: 14px;
+      border: none; cursor: pointer; text-decoration: none;
+      box-shadow: 0 4px 20px rgba(79,70,229,0.35);
+      transition: opacity 0.2s, transform 0.15s; font-family: 'Inter', sans-serif;
+    }
+    .btn-primary-lg:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-outline-lg {
+      width: 100%; padding: 14px; border-radius: 14px;
+      border: 1.5px solid var(--border2); background: transparent;
+      color: var(--text2); font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif;
+    }
+    .btn-outline-lg:hover { background: var(--card); }
+
+    @media (max-width: 480px) {
+      .hero h2 { font-size: 24px; }
+      .form-card { padding: 22px 18px; }
+      .agent-top  { gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ HEADER ══════════════ -->
+<header class="header">
+  <div class="header-left">
+    <h1>⚡ Business Decision Simulator</h1>
+    <p>Multi-agent AI · Inspired by MiroFish</p>
+  </div>
+  <a href="https://digitalheroesco.com" target="_blank" rel="noopener" class="btn-dh">
+    Built for Digital Heroes
+  </a>
+</header>
+
+<!-- ══════════════ FORM SCREEN ══════════════ -->
+<div id="formScreen">
+  <div class="hero">
+    <div class="hero-tag">⚡ Swarm Intelligence · 5 AI Agents · Free</div>
+    <h2>See your decision through 5 different minds</h2>
+    <p>Describe your business decision. Five AI agents — a skeptic, investor, competitor, analyst, and early adopter — each react, raise concerns, and predict what happens. You get a consensus verdict in seconds.</p>
+    <div class="agent-preview">
+      <div class="ap-chip" style="color:#F87171;border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.06)">😤 Skeptical Customer</div>
+      <div class="ap-chip" style="color:#34D399;border-color:rgba(52,211,153,0.3);background:rgba(52,211,153,0.06)">💰 Investor</div>
+      <div class="ap-chip" style="color:#FBBF24;border-color:rgba(251,191,36,0.3);background:rgba(251,191,36,0.06)">🎯 Competitor</div>
+      <div class="ap-chip" style="color:#60A5FA;border-color:rgba(96,165,250,0.3);background:rgba(96,165,250,0.06)">📊 Analyst</div>
+      <div class="ap-chip" style="color:#A78BFA;border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.06)">🚀 Early Adopter</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="form-card">
+      <div class="form-section-title">// Your Business Context</div>
+
+      <div class="field">
+        <label>What does your business do?</label>
+        <input type="text" id="business" placeholder="e.g. DTC skincare brand selling to women 25–45 in the US" />
+      </div>
+
+      <div class="field">
+        <label>Type of decision</label>
+        <div class="select-wrap">
+          <select id="decisionType">
+            <option value="">Select a category…</option>
+            <option>Pricing change</option>
+            <option>New product or feature launch</option>
+            <option>Market or geography expansion</option>
+            <option>Website redesign or platform migration</option>
+            <option>Marketing strategy shift</option>
+            <option>Hiring or team restructure</option>
+            <option>Partnership or acquisition</option>
+            <option>Funding round or investor pitch</option>
+            <option>Pivot or major business change</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+
+      <hr class="divider" />
+      <div class="form-section-title">// The Decision</div>
+
+      <div class="field">
+        <label>Describe your decision in plain language — be specific</label>
+        <textarea id="decision" placeholder="e.g. We're planning to raise prices by 30% across our entire product range and reposition as a premium brand. We'll discontinue our entry-level SKUs. Launching Q3 2025."></textarea>
+      </div>
+
+      <div class="field">
+        <label>What outcome are you hoping for? <span style="color:var(--text3);font-weight:400">(optional)</span></label>
+        <input type="text" id="outcome" placeholder="e.g. Higher margins, stronger brand positioning, less price-sensitive customers" />
+      </div>
+
+      <button class="btn-simulate" onclick="runSimulation()">
+        ⚡ Run Simulation — Spawn 5 Agents
+      </button>
+      <div class="error-msg" id="errorMsg" style="display:none"></div>
+    </div>
+
+    <div class="page-footer">
+      Built by <span class="name">[Your Full Name]</span> ·
+      <a href="mailto:your@email.com">[your@email.com]</a><br/>
+      Free tool · No signup · Trial project for Digital Heroes
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ LOADING SCREEN ══════════════ -->
+<div id="loadingScreen">
+  <div class="load-orb"></div>
+  <div class="load-title">Simulation running…</div>
+  <div class="load-sub">5 agents spawned · Interaction model active</div>
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="terminal-dot" style="background:#F87171"></div>
+      <div class="terminal-dot" style="background:#FBBF24"></div>
+      <div class="terminal-dot" style="background:#34D399"></div>
+    </div>
+    <div class="terminal-line" id="tl1"> </div>
+    <div class="terminal-line" id="tl2"> </div>
+    <div class="terminal-line" id="tl3"> </div>
+    <div class="terminal-line active" id="tl4"> <span class="cursor"></span></div>
+  </div>
+</div>
+
+<!-- ══════════════ RESULT SCREEN ══════════════ -->
+<div id="resultScreen">
+  <div class="result-header">
+    <div>
+      <div class="rtitle">⚡ Simulation Complete</div>
+      <div class="rsub" id="resultSub">5 agents · consensus generated</div>
+    </div>
+    <button class="btn-sm" onclick="resetTool()">↩ New Simulation</button>
+  </div>
+
+  <div class="result-body">
+    <!-- Decision summary -->
+    <div class="decision-box">
+      <div class="db-label">// Decision Simulated</div>
+      <div class="db-text" id="decisionSummary"></div>
+    </div>
+
+    <!-- Agent cards -->
+    <div class="section-header">// Agent Reactions</div>
+    <div class="agents-list" id="agentsList"></div>
+
+    <!-- Consensus -->
+    <div class="consensus-card">
+      <div class="cons-title">// Consensus Report</div>
+      <div class="cons-text" id="consensusText"></div>
+    </div>
+
+    <!-- Verdict + Risk -->
+    <div class="verdict-row">
+      <div class="verdict-card">
+        <div class="v-label">Simulation Verdict</div>
+        <div class="v-badge" id="verdictBadge">—</div>
+      </div>
+      <div class="verdict-card">
+        <div class="v-label">Risk Level</div>
+        <div class="v-badge" id="riskBadge">—</div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions-card">
+      <div class="cons-title">// Recommended Actions</div>
+      <div id="actionsList"></div>
+    </div>
+
+    <!-- CTAs -->
+    <div class="result-ctas">
+      <a href="https://digitalheroesco.com" target="_blank" rel="noopener" class="btn-primary-lg">
+        Built for Digital Heroes — Get a Free Strategy Session →
+      </a>
+      <button class="btn-outline-lg" onclick="resetTool()">↩ Simulate Another Decision</button>
+    </div>
+
+    <div class="page-footer">
+      Built by <span class="name">[Your Full Name]</span> ·
+      <a href="mailto:your@email.com">[your@email.com]</a><br/>
+      Free tool · Inspired by MiroFish · Trial project for Digital Heroes
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── AGENT CONFIG ─────────────────────────────────────────────────────────────
+
+const AGENTS_META = {
+  "customer":   { name:"The Skeptical Customer",  emoji:"😤", role:"Hard-to-convince existing buyer",    color:"#F87171", bg:"rgba(248,113,113,0.06)", labelColor:"#F87171" },
+  "investor":   { name:"The Potential Investor",  emoji:"💰", role:"VC evaluating viability & returns",  color:"#34D399", bg:"rgba(52,211,153,0.06)",  labelColor:"#34D399" },
+  "competitor": { name:"The Direct Competitor",   emoji:"🎯", role:"Rival brand planning their counter", color:"#FBBF24", bg:"rgba(251,191,36,0.06)",  labelColor:"#FBBF24" },
+  "analyst":    { name:"The Industry Analyst",    emoji:"📊", role:"Market expert assessing impact",     color:"#60A5FA", bg:"rgba(96,165,250,0.06)",  labelColor:"#60A5FA" },
+  "adopter":    { name:"The Early Adopter",       emoji:"🚀", role:"Your most enthusiastic customer",    color:"#A78BFA", bg:"rgba(167,139,250,0.06)", labelColor:"#A78BFA" },
+};
+
+const AGENT_ORDER = ["customer","investor","competitor","analyst","adopter"];
+
+// ─── LOADING TERMINAL ─────────────────────────────────────────────────────────
+
+const LOAD_MSGS = [
+  "▶ Initialising simulation environment...",
+  "▶ Parsing decision context...",
+  "▶ Spawning agent: Skeptical Customer",
+  "▶ Spawning agent: Potential Investor",
+  "▶ Spawning agent: Direct Competitor",
+  "▶ Spawning agent: Industry Analyst",
+  "▶ Spawning agent: Early Adopter",
+  "▶ Running interaction model...",
+  "▶ Analysing agent consensus...",
+  "▶ Generating prediction report...",
+];
+
+let loadInterval = null;
+let loadIndex = 0;
+const LOG = ["tl1","tl2","tl3","tl4"];
+
+function startLoadingTerminal() {
+  loadIndex = 0;
+  LOG.forEach(id => { document.getElementById(id).textContent = " "; });
+  document.getElementById("tl4").innerHTML = ' <span class="cursor"></span>';
+
+  loadInterval = setInterval(() => {
+    const msg = LOAD_MSGS[loadIndex % LOAD_MSGS.length];
+    // Shift up
+    for (let i = 0; i < LOG.length - 1; i++) {
+      document.getElementById(LOG[i]).textContent = document.getElementById(LOG[i+1]).textContent.replace("▌","");
+      document.getElementById(LOG[i]).classList.remove("active");
+    }
+    document.getElementById("tl4").innerHTML = msg + ' <span class="cursor"></span>';
+    document.getElementById("tl4").classList.add("active");
+    loadIndex++;
+  }, 700);
+}
+
+function stopLoadingTerminal() {
+  if (loadInterval) clearInterval(loadInterval);
+}
+
+// ─── MAIN SIMULATION ──────────────────────────────────────────────────────────
+
+async function runSimulation() {
+  const business = document.getElementById("business").value.trim();
+  const decType  = document.getElementById("decisionType").value;
+  const decision = document.getElementById("decision").value.trim();
+  const outcome  = document.getElementById("outcome").value.trim();
+
+  if (!decision) {
+    const e = document.getElementById("errorMsg");
+    e.textContent = "Please describe your decision before running the simulation.";
+    e.style.display = "block";
+    return;
+  }
+  document.getElementById("errorMsg").style.display = "none";
+
+  show("loadingScreen");
+  startLoadingTerminal();
+
+  const prompt = `You are a multi-agent business intelligence simulator inspired by swarm intelligence. Simulate how 5 distinct expert personas react to this business decision. Return ONLY valid JSON — no markdown, no backticks, no explanation outside the JSON.
+
+BUSINESS CONTEXT:
+Business: ${business || "Not specified"}
+Decision Type: ${decType || "Not specified"}
+The Decision: ${decision}
+Hoped-for Outcome: ${outcome || "Not specified"}
+
+Simulate these 5 agents. Each has a distinct perspective, voice, and agenda:
+1. "customer" — The Skeptical Customer: a loyal but cautious buyer who's seen brands disappoint them before. Protective of their wallet and trust.
+2. "investor" — The Potential Investor: a VC or angel evaluating ROI, scalability, and risk. Thinks in multiples and market share.
+3. "competitor" — The Direct Competitor: a rival brand that will benefit or be threatened. Strategically calculating their counter-move.
+4. "analyst" — The Industry Analyst: a market research expert who looks at trends, data, and industry precedent. Neutral but sharp.
+5. "adopter" — The Early Adopter: the most enthusiastic customer, ready to evangelize or abandon based on this decision.
+
+Return exactly this JSON:
+{
+  "agents": [
+    {
+      "id": "customer",
+      "reaction": "<2-3 sentence authentic reaction in their voice>",
+      "concern": "<their single sharpest concern, one sentence>",
+      "prediction": "<what they predict will happen as a result, one sentence>"
+    },
+    {
+      "id": "investor",
+      "reaction": "...",
+      "concern": "...",
+      "prediction": "..."
+    },
+    {
+      "id": "competitor",
+      "reaction": "...",
+      "concern": "...",
+      "prediction": "..."
+    },
+    {
+      "id": "analyst",
+      "reaction": "...",
+      "concern": "...",
+      "prediction": "..."
+    },
+    {
+      "id": "adopter",
+      "reaction": "...",
+      "concern": "...",
+      "prediction": "..."
+    }
+  ],
+  "verdict": "<one of: Go For It | Proceed With Caution | Rethink This>",
+  "riskLevel": "<one of: Low | Medium | High | Very High>",
+  "consensus": "<2-3 sentence synthesis of all agent perspectives into a balanced assessment>",
+  "actions": ["<specific action 1>", "<specific action 2>", "<specific action 3>"]
+}`;
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+
+    const json = await res.json();
+    if (json.error) throw new Error(json.error.message);
+    const raw   = json.content?.map(b => b.text || "").join("") || "";
+    const clean = raw.replace(/```json|```/g, "").trim();
+    const data  = JSON.parse(clean);
+
+    stopLoadingTerminal();
+    renderResult(data, decision, business);
+    show("resultScreen");
+
+  } catch (err) {
+    stopLoadingTerminal();
+    show("formScreen");
+    const e = document.getElementById("errorMsg");
+    e.textContent = "Simulation failed. Please check your connection and try again.";
+    e.style.display = "block";
+  }
+}
+
+// ─── RENDER RESULT ────────────────────────────────────────────────────────────
+
+function renderResult(data, decision, business) {
+  // Decision summary
+  document.getElementById("decisionSummary").textContent = decision;
+  document.getElementById("resultSub").textContent =
+    `${business || "Your business"} · 5 agents · consensus generated`;
+
+  // Agent cards
+  const list = document.getElementById("agentsList");
+  list.innerHTML = "";
+
+  const agentsData = {};
+  (data.agents || []).forEach(a => agentsData[a.id] = a);
+
+  AGENT_ORDER.forEach(id => {
+    const meta   = AGENTS_META[id];
+    const agent  = agentsData[id] || {};
+    if (!meta) return;
+
+    list.innerHTML += `
+      <div class="agent-card" style="border-left:3px solid ${meta.color}; background:${meta.bg}">
+        <div class="agent-top">
+          <div class="agent-emoji-wrap" style="background:${meta.bg};border:1px solid ${meta.color}30">
+            ${meta.emoji}
+          </div>
+          <div>
+            <div class="agent-name" style="color:${meta.color}">${meta.name}</div>
+            <div class="agent-role">${meta.role}</div>
+          </div>
+        </div>
+        <div class="agent-body">
+          <div class="agent-section">
+            <div class="as-label" style="color:${meta.color}">Reaction</div>
+            <div class="as-text">${agent.reaction || "No response."}</div>
+          </div>
+          <div class="agent-section">
+            <div class="as-label" style="color:#F87171">⚠ Biggest Concern</div>
+            <div class="as-text concern">${agent.concern || "—"}</div>
+          </div>
+          <div class="agent-section">
+            <div class="as-label" style="color:var(--text3)">Their Prediction</div>
+            <div class="as-text prediction">"${agent.prediction || "—"}"</div>
+          </div>
+        </div>
+      </div>`;
+  });
+
+  // Consensus
+  document.getElementById("consensusText").textContent = data.consensus || "—";
+
+  // Verdict badge
+  const verdictColors = {
+    "Go For It":            { c:"#34D399", bg:"rgba(52,211,153,0.12)",  border:"rgba(52,211,153,0.30)"  },
+    "Proceed With Caution": { c:"#FBBF24", bg:"rgba(251,191,36,0.12)",  border:"rgba(251,191,36,0.30)"  },
+    "Rethink This":         { c:"#F87171", bg:"rgba(248,113,113,0.12)", border:"rgba(248,113,113,0.30)" },
+  };
+  const riskColors = {
+    "Low":       { c:"#34D399", bg:"rgba(52,211,153,0.12)",  border:"rgba(52,211,153,0.30)"  },
+    "Medium":    { c:"#FBBF24", bg:"rgba(251,191,36,0.12)",  border:"rgba(251,191,36,0.30)"  },
+    "High":      { c:"#F87171", bg:"rgba(248,113,113,0.12)", border:"rgba(248,113,113,0.30)" },
+    "Very High": { c:"#EF4444", bg:"rgba(239,68,68,0.15)",   border:"rgba(239,68,68,0.35)"  },
+  };
+
+  const v  = data.verdict   || "—";
+  const r  = data.riskLevel || "—";
+  const vc = verdictColors[v] || { c:"var(--text2)", bg:"transparent", border:"var(--border)" };
+  const rc = riskColors[r]    || { c:"var(--text2)", bg:"transparent", border:"var(--border)" };
+
+  const vb = document.getElementById("verdictBadge");
+  vb.textContent = v;
+  vb.style.cssText = `color:${vc.c};background:${vc.bg};border-color:${vc.border}`;
+
+  const rb = document.getElementById("riskBadge");
+  rb.textContent = r;
+  rb.style.cssText = `color:${rc.c};background:${rc.bg};border-color:${rc.border}`;
+
+  // Actions
+  const al = document.getElementById("actionsList");
+  al.innerHTML = "";
+  (data.actions || []).forEach((a, i) => {
+    al.innerHTML += `
+      <div class="action-item">
+        <div class="action-num">${i + 1}</div>
+        <span>${a}</span>
+      </div>`;
+  });
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+
+function resetTool() {
+  document.getElementById("business").value     = "";
+  document.getElementById("decisionType").value = "";
+  document.getElementById("decision").value     = "";
+  document.getElementById("outcome").value      = "";
+  document.getElementById("errorMsg").style.display = "none";
+  show("formScreen");
+}
+
+function show(id) {
+  ["formScreen","loadingScreen","resultScreen"].forEach(s => {
+    const el = document.getElementById(s);
+    if (!el) return;
+    el.style.display = (s === id)
+      ? (s === "loadingScreen" ? "flex" : "block")
+      : "none";
+  });
+}
+</script>
+</body>
+</html>
